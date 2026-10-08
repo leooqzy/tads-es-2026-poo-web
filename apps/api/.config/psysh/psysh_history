@@ -1,0 +1,10 @@
+\App\Models\User::where('email', 'leo@test.com')->update(['password' => bcrypt('password')]);
+\App\Models\User::where('email', 'teste@gmail.com')->update(['password' => bcrypt('password')]);
+docker exec
+docker exec -it
+docker exec poo_web 
+docker exec -it poo_web_php bash
+docker exec -it poo_web_php bash
+docker compose up -d
+docker ps
+exit
