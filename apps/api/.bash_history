@@ -30,3 +30,6 @@ php artisan cache:clear
 exit
 php artisan route:list
 exit
+clear
+clear
+exit
