@@ -3,23 +3,22 @@
     <q-header elevated>
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
-
         <q-toolbar-title> Quasar App </q-toolbar-title>
-
-        <div>Quasar v{{ $q.version }}</div>
+        <div>
+          {{ user?.name }} <br>
+          <small>{{ user?.email }}</small>
+        </div>
       </q-toolbar>
     </q-header>
 
     <q-drawer v-model="leftDrawerOpen" show-if-above bordered>
       <q-list>
-        <q-item-label header> Essential Links </q-item-label>
-
+        <q-item-label header> MENU </q-item-label>
         <EssentialLink v-for="link in linksList" :key="link.label" v-bind="link" />
       </q-list>
     </q-drawer>
 
     <q-page-container>
-      ADMIN LAYOUT
       <router-view />
     </q-page-container>
   </q-layout>
@@ -28,43 +27,26 @@
 <script setup>
 import { ref } from 'vue'
 import EssentialLink from '@/components/EssentialLink.vue'
+import { LocalStorage } from 'quasar'
 
 const linksList = [
   {
-    label: 'Docs',
-    caption: 'quasar.dev',
-    icon: 'school',
-    link: 'https://quasar.dev',
+    label: 'Categorias',
+    caption: 'categorias',
+    icon: 'category',
+    link: '/admin/categories',
   },
   {
-    label: 'Github',
-    caption: 'github.com/quasarframework',
-    icon: 'code',
-    link: 'https://github.com/quasarframework',
+    label: 'Produtos',
+    caption: 'produtos',
+    icon: 'category',
+    link: '/admin/products',
   },
   {
-    label: 'Forum',
-    caption: 'forum.quasar.dev',
-    icon: 'record_voice_over',
-    link: 'https://forum.quasar.dev',
-  },
-  {
-    label: 'Twitter',
-    caption: '@quasarframework',
-    icon: 'rss_feed',
-    link: 'https://twitter.quasar.dev',
-  },
-  {
-    label: 'Facebook',
-    caption: '@QuasarFramework',
-    icon: 'public',
-    link: 'https://facebook.quasar.dev',
-  },
-  {
-    label: 'Quasar Awesome',
-    caption: 'Community Quasar projects',
-    icon: 'favorite',
-    link: 'https://awesome.quasar.dev',
+    label: 'Sair',
+    caption: 'sair do sistema',
+    icon: 'exit_to_app',
+    link: '/admin/logout',
   },
 ]
 
@@ -73,4 +55,7 @@ const leftDrawerOpen = ref(false)
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
+
+const auth = LocalStorage.getItem('auth_data')
+const user = auth?.user ?? null
 </script>
