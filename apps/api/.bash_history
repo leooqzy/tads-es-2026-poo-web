@@ -33,3 +33,12 @@ exit
 clear
 clear
 exit
+composer require dedoc/scramble
+php artisan --version
+php artisan vendor:publish --
+provider="Dedoc\Scramble\ScrambleServiceProvider" --tag="scramble-config"
+php artisan vendor:publish --provider="Dedoc\Scramble\ScrambleServiceProvider" --tag="scramble-config"
+php artisan migrate:fresh --seed
+php artisan tinker
+php artisan tinker
+exit

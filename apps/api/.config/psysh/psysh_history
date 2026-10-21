@@ -8,3 +8,10 @@ docker exec -it poo_web_php bash
 docker compose up -d
 docker ps
 exit
+doc --update-manual
+exit
+\App\Models\User::create([
+    'name' => 'Utilizador Teste',
+    'email' => 'leo@teste.com',
+    'password' => bcrypt('password')
+]);
