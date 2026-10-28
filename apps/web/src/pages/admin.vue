@@ -29,6 +29,7 @@ import { ref } from 'vue'
 import EssentialLink from '@/components/EssentialLink.vue'
 import { LocalStorage } from 'quasar'
 
+
 const linksList = [
   {
     label: 'Categorias',
@@ -39,8 +40,14 @@ const linksList = [
   {
     label: 'Produtos',
     caption: 'produtos',
-    icon: 'category',
+    icon: 'inventory_2',
     link: '/admin/products',
+  },
+  {
+    label: 'Clientes',
+    caption: 'gerenciar clientes',
+    icon: 'people',
+    link: '/admin/customers',
   },
   {
     label: 'Sair',

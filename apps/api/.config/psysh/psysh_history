@@ -15,3 +15,7 @@ exit
     'email' => 'leo@teste.com',
     'password' => bcrypt('password')
 ]);
+$user = App\Models\User::where('email', 'leo@teste.com')->first();
+$user->password = Hash::make('password');
+$user->save();
+exit
