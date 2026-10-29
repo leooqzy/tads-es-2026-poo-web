@@ -437,3 +437,5 @@ onMounted(() => {
 </script>
 '@ | Set-Content -LiteralPath "apps/web/src/pages/admin/customers/[id].vue" -Encoding utf8
 exit
+php artisan make:migration add_columns_to_products_table
+exit
