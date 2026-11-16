@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_strings.dart';
+import '../../core/routes/route_names.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/utils/app_exception.dart';
 import '../../core/utils/app_validators.dart';
+import '../../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, required this.authService});
+
+  final AuthService authService;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -18,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -26,13 +33,49 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) {
+  Future<void> _submit() async {
+    if (_isLoading || !_formKey.currentState!.validate()) {
       return;
     }
 
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text(AppStrings.loginPending)));
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = await widget.authService.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      // Direciona o usuário conforme o perfil recebido do Laravel.
+      final destination = user.isAdmin
+          ? RouteNames.adminDashboard
+          : user.isSeller
+          ? RouteNames.sellerDashboard
+          : RouteNames.catalog;
+
+      context.goNamed(destination, extra: user);
+    } on AppException catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text(AppStrings.unexpectedError)));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -52,6 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // Layout para computador
   Widget _buildDesktopLayout(BuildContext context) {
     return Row(
       children: [
@@ -77,6 +121,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // Apresentação do FF Rental
   Widget _buildHeroPanel(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(AppSpacing.pagePadding),
@@ -85,7 +130,6 @@ class _LoginScreenState extends State<LoginScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildBrand(),
-
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -97,9 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   letterSpacing: 1.5,
                 ),
               ),
-
               const SizedBox(height: AppSpacing.lg),
-
               Text(
                 AppStrings.heroTitle,
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -108,9 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   height: 1.12,
                 ),
               ),
-
               const SizedBox(height: AppSpacing.lg),
-
               Text(
                 AppStrings.heroDescription,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -121,7 +161,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
-
           Text(
             AppStrings.tagline,
             style: Theme.of(context).textTheme.bodySmall
@@ -132,6 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // Logo e nome
   Widget _buildBrand() {
     return Row(
       children: [
@@ -148,9 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
             size: AppSpacing.iconLarge,
           ),
         ),
-
         const SizedBox(width: AppSpacing.md),
-
         Text(
           AppStrings.appName,
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -159,6 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // Formulário de login
   Widget _buildLoginCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.formPadding),
@@ -230,9 +269,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
             const SizedBox(height: AppSpacing.lg),
 
+            // Botão entrar
             FilledButton(
-              onPressed: _submit,
-              child: const Text(AppStrings.login),
+              onPressed: _isLoading ? null : _submit,
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 22,
+                      width: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text(AppStrings.login),
+            ),
+
+            const SizedBox(height: AppSpacing.md),
+
+            // Acesso ao cadastro
+            TextButton(
+              onPressed: () {
+                context.goNamed(RouteNames.register);
+              },
+              child: const Text(AppStrings.registerPrompt),
             ),
           ],
         ),
@@ -240,6 +296,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // Layout para celular
   Widget _buildMobileLayout(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.mobilePagePadding),
