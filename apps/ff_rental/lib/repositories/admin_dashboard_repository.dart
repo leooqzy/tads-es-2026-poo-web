@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../core/network/api_client.dart';
@@ -13,13 +15,14 @@ class AdminDashboardRepository {
     try {
       final response = await _apiClient.dio.get('/admin/dashboard');
 
-      if (response.data is! Map) {
+      final rawData = response.data;
+      final decoded = rawData is String ? jsonDecode(rawData) : rawData;
+
+      if (decoded is! Map) {
         throw const AppException('Resposta inválida do painel administrativo.');
       }
 
-      return AdminDashboard.fromJson(
-        Map<String, dynamic>.from(response.data as Map),
-      );
+      return AdminDashboard.fromJson(Map<String, dynamic>.from(decoded));
     } on DioException catch (error) {
       final data = error.response?.data;
 
@@ -31,9 +34,11 @@ class AdminDashboardRepository {
         throw const AppException('Não foi possível conectar à API.');
       }
 
-      throw const AppException(
-        'Não foi possível carregar o painel administrativo.',
+      throw AppException(
+        'Erro ao carregar painel: HTTP ${error.response?.statusCode}.',
       );
+    } on FormatException {
+      throw const AppException('A API retornou dados inválidos para o painel.');
     }
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -11,6 +13,33 @@ class ProductRepository {
 
   final ApiClient _apiClient;
 
+  // Converte a resposta mesmo quando o servidor envia JSON como texto.
+  dynamic _decodeResponse(dynamic data) {
+    if (data is String) {
+      return jsonDecode(data);
+    }
+
+    return data;
+  }
+
+  List<dynamic> _extractProducts(dynamic data) {
+    final decoded = _decodeResponse(data);
+
+    if (decoded is List) {
+      return decoded;
+    }
+
+    if (decoded is Map) {
+      final products = decoded['data'];
+
+      if (products is List) {
+        return products;
+      }
+    }
+
+    throw const AppException('Formato inválido ao carregar anúncios.');
+  }
+
   Future<List<Product>> getProducts() {
     return _getProducts(ApiConstants.productsEndpoint);
   }
@@ -22,19 +51,18 @@ class ProductRepository {
   Future<List<Product>> _getProducts(String endpoint) async {
     try {
       final response = await _apiClient.dio.get(endpoint);
-      final data = response.data;
 
-      if (data is! Map || data['data'] is! List) {
-        throw const AppException('Formato inválido ao carregar anúncios.');
-      }
+      final products = _extractProducts(response.data);
 
-      return (data['data'] as List)
+      return products
           .map(
             (item) => Product.fromJson(Map<String, dynamic>.from(item as Map)),
           )
           .toList();
     } on DioException catch (error) {
       throw _handleError(error);
+    } on FormatException {
+      throw const AppException('A API retornou dados inválidos.');
     }
   }
 
@@ -46,7 +74,6 @@ class ProductRepository {
     try {
       final fields = Map<String, dynamic>.from(data);
 
-      // O Laravel recebe 1/0 no multipart para validar o boolean.
       if (fields['enabled'] != null) {
         fields['enabled'] = fields['enabled'] == true || fields['enabled'] == 1
             ? '1'
@@ -71,9 +98,15 @@ class ProductRepository {
         options: Options(contentType: Headers.multipartFormDataContentType),
       );
 
-      return Product.fromJson(Map<String, dynamic>.from(response.data as Map));
+      final decoded = _decodeResponse(response.data);
+
+      return Product.fromJson(Map<String, dynamic>.from(decoded as Map));
     } on DioException catch (error) {
       throw _handleError(error);
+    } on FormatException {
+      throw const AppException(
+        'A API retornou uma resposta inválida ao cadastrar o anúncio.',
+      );
     }
   }
 
@@ -84,9 +117,15 @@ class ProductRepository {
         data: data,
       );
 
-      return Product.fromJson(Map<String, dynamic>.from(response.data as Map));
+      final decoded = _decodeResponse(response.data);
+
+      return Product.fromJson(Map<String, dynamic>.from(decoded as Map));
     } on DioException catch (error) {
       throw _handleError(error);
+    } on FormatException {
+      throw const AppException(
+        'A API retornou uma resposta inválida ao atualizar o anúncio.',
+      );
     }
   }
 
@@ -99,7 +138,15 @@ class ProductRepository {
   }
 
   AppException _handleError(DioException error) {
-    final data = error.response?.data;
+    dynamic data = error.response?.data;
+
+    if (data is String) {
+      try {
+        data = jsonDecode(data);
+      } catch (_) {
+        return AppException(data);
+      }
+    }
 
     if (data is Map) {
       final errors = data['errors'];
@@ -121,6 +168,8 @@ class ProductRepository {
       return const AppException('Não foi possível conectar à API.');
     }
 
-    return const AppException('Não foi possível realizar a operação.');
+    return AppException(
+      'Erro na API: HTTP ${error.response?.statusCode ?? "desconhecido"}.',
+    );
   }
 }

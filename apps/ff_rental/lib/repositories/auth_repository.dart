@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../core/network/api_client.dart';
@@ -7,6 +9,21 @@ class AuthRepository {
   AuthRepository(this.apiClient);
 
   final ApiClient apiClient;
+
+  Map<String, dynamic> _parseResponse(dynamic data) {
+    // O servidor pode devolver JSON como texto ou como Map.
+    final decoded = data is String ? jsonDecode(data) : data;
+
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+
+    if (decoded is Map) {
+      return Map<String, dynamic>.from(decoded);
+    }
+
+    throw const FormatException('Resposta inválida recebida do servidor.');
+  }
 
   Future<AuthResponse> login({
     required String email,
@@ -18,9 +35,11 @@ class AuthRepository {
         data: {'email': email, 'password': password},
       );
 
-      return AuthResponse.fromJson(response.data as Map<String, dynamic>);
+      return AuthResponse.fromJson(_parseResponse(response.data));
     } on DioException catch (e) {
       throw Exception(_getErrorMessage(e));
+    } on FormatException catch (e) {
+      throw Exception(e.message);
     }
   }
 
@@ -52,19 +71,29 @@ class AuthRepository {
 
       final response = await apiClient.dio.post('/auth/register', data: data);
 
-      return AuthResponse.fromJson(response.data as Map<String, dynamic>);
+      return AuthResponse.fromJson(_parseResponse(response.data));
     } on DioException catch (e) {
       throw Exception(_getErrorMessage(e));
+    } on FormatException catch (e) {
+      throw Exception(e.message);
     }
   }
 
   String _getErrorMessage(DioException error) {
-    final data = error.response?.data;
+    dynamic data = error.response?.data;
 
-    if (data is Map<String, dynamic>) {
+    if (data is String) {
+      try {
+        data = jsonDecode(data);
+      } catch (_) {
+        return data;
+      }
+    }
+
+    if (data is Map) {
       final errors = data['errors'];
 
-      if (errors is Map<String, dynamic> && errors.isNotEmpty) {
+      if (errors is Map && errors.isNotEmpty) {
         final firstError = errors.values.first;
 
         if (firstError is List && firstError.isNotEmpty) {
@@ -77,7 +106,11 @@ class AuthRepository {
       }
     }
 
-    return 'Não foi possível conectar ao servidor.';
+    if (error.response == null) {
+      return 'Não foi possível conectar ao servidor.';
+    }
+
+    return 'Não foi possível realizar o login.';
   }
 }
 
@@ -90,7 +123,7 @@ class AuthResponse {
   factory AuthResponse.fromJson(Map<String, dynamic> json) {
     return AuthResponse(
       token: json['token'] as String,
-      user: User.fromJson(json['user'] as Map<String, dynamic>),
+      user: User.fromJson(Map<String, dynamic>.from(json['user'] as Map)),
     );
   }
 }

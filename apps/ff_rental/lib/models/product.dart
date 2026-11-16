@@ -64,9 +64,11 @@ class Product {
       relativePath = relativePath.substring('storage/'.length);
     }
 
-    final baseUrl = ApiConstants.baseUrl.replaceFirst(RegExp(r'/$'), '');
+    final baseUri = Uri.parse(ApiConstants.baseUrl);
 
-    return '$baseUrl/product-images/$relativePath';
+    return baseUri
+        .replace(path: '/storage/$relativePath', query: null, fragment: null)
+        .toString();
   }
 
   factory Product.fromJson(Map<String, dynamic> json) {
