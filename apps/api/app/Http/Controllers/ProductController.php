@@ -6,6 +6,7 @@ use App\Http\Requests\ProductStoreRequest;
 use App\Http\Requests\ProductUpdateRequest;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -13,7 +14,7 @@ class ProductController extends Controller
     {
         $query = Product::query();
 
-        // Administradores podem visualizar todos os anúncios.
+        // Administradores visualizam todos os anúncios.
         // Os demais usuários visualizam somente os ativos.
         if ($request->user()->role !== 'admin') {
             $query->where('enabled', true);
@@ -36,9 +37,22 @@ class ProductController extends Controller
 
     public function store(ProductStoreRequest $request)
     {
+        $data = $request->validated();
+
+        // Salva a imagem da conta.
+        $data['image_account'] = $request
+            ->file('image_account')
+            ->store('products/accounts', 'public');
+
+        // Salva a imagem do inventário.
+        $data['image_inventory'] = $request
+            ->file('image_inventory')
+            ->store('products/inventories', 'public');
+
+        // Mantém o anúncio vinculado ao vendedor autenticado.
         $product = $request->user()
             ->products()
-            ->create($request->validated());
+            ->create($data);
 
         return response()->json($product, 201);
     }
@@ -50,7 +64,7 @@ class ProductController extends Controller
         if (
             !$product->enabled &&
             $user->role !== 'admin' &&
-            $product->user_id !== $user->id
+            (int) $product->user_id !== (int) $user->id
         ) {
             abort(404, 'Anúncio não encontrado.');
         }
@@ -64,7 +78,41 @@ class ProductController extends Controller
     ) {
         $this->authorizeOwnerOrAdmin($request, $product);
 
-        $product->update($request->validated());
+        $data = $request->validated();
+
+        $oldAccountImage = $product->image_account;
+        $oldInventoryImage = $product->image_inventory;
+
+        // Substitui a imagem da conta somente se uma nova foi enviada.
+        if ($request->hasFile('image_account')) {
+            $data['image_account'] = $request
+                ->file('image_account')
+                ->store('products/accounts', 'public');
+        }
+
+        // Substitui a imagem do inventário somente se uma nova foi enviada.
+        if ($request->hasFile('image_inventory')) {
+            $data['image_inventory'] = $request
+                ->file('image_inventory')
+                ->store('products/inventories', 'public');
+        }
+
+        $product->update($data);
+
+        // Remove os arquivos antigos após salvar as substituições.
+        if (
+            $request->hasFile('image_account') &&
+            $oldAccountImage
+        ) {
+            Storage::disk('public')->delete($oldAccountImage);
+        }
+
+        if (
+            $request->hasFile('image_inventory') &&
+            $oldInventoryImage
+        ) {
+            Storage::disk('public')->delete($oldInventoryImage);
+        }
 
         return $product->refresh();
     }
@@ -72,6 +120,15 @@ class ProductController extends Controller
     public function destroy(Request $request, Product $product)
     {
         $this->authorizeOwnerOrAdmin($request, $product);
+
+        // Remove as imagens armazenadas.
+        if ($product->image_account) {
+            Storage::disk('public')->delete($product->image_account);
+        }
+
+        if ($product->image_inventory) {
+            Storage::disk('public')->delete($product->image_inventory);
+        }
 
         $product->delete();
 
@@ -85,6 +142,7 @@ class ProductController extends Controller
         $user = $request->user();
 
         $isAdmin = $user->role === 'admin';
+
         $isOwner = $product->user_id !== null
             && (int) $product->user_id === (int) $user->id;
 

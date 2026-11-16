@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -15,14 +16,37 @@ class AuthController extends Controller
     {
         $data = $request->validated();
 
+        $cpfHash = null;
+
+        if ($data['role'] === 'seller') {
+            $cpfHash = hash_hmac(
+                'sha256',
+                $data['cpf'],
+                (string) config('app.key')
+            );
+
+            if (User::where('cpf_hash', $cpfHash)->exists()) {
+                throw ValidationException::withMessages([
+                    'cpf' => 'Este CPF já está cadastrado.',
+                ]);
+            }
+        }
+
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
         ]);
 
-        // O perfil é definido separadamente do preenchimento em massa.
+        // Perfil definido exclusivamente pelo back-end.
         $user->role = $data['role'];
+
+        if ($data['role'] === 'seller') {
+            $user->phone = $data['phone'];
+            $user->cpf = $data['cpf'];
+            $user->cpf_hash = $cpfHash;
+        }
+
         $user->save();
 
         $token = $user->createToken($user->name)->plainTextToken;

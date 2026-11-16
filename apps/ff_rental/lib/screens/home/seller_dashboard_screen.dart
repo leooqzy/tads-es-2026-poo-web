@@ -66,9 +66,8 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
   Future<void> _openCreateProduct() async {
     final created = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return CreateProductDialog(productService: widget.productService);
-      },
+      builder: (context) =>
+          CreateProductDialog(productService: widget.productService),
     );
 
     if (!mounted || created != true) return;
@@ -77,9 +76,177 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
 
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Anúncio publicado com sucesso!')),
+    _showMessage('Anúncio publicado com sucesso!');
+  }
+
+  Future<void> _editProduct(Product product) async {
+    final nameController = TextEditingController(text: product.name);
+    final descriptionController = TextEditingController(
+      text: product.description ?? '',
     );
+    final priceController = TextEditingController(
+      text: product.price.toStringAsFixed(2),
+    );
+    final stockController = TextEditingController(
+      text: product.stock.toString(),
+    );
+
+    final formKey = GlobalKey<FormState>();
+
+    try {
+      final data = await showDialog<Map<String, dynamic>>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Editar anúncio'),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      controller: nameController,
+                      decoration: const InputDecoration(labelText: 'Nome'),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Informe o nome.';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
+                      controller: descriptionController,
+                      decoration: const InputDecoration(labelText: 'Descrição'),
+                      maxLines: 3,
+                    ),
+                    TextFormField(
+                      controller: priceController,
+                      decoration: const InputDecoration(labelText: 'Preço'),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      validator: (value) {
+                        final price = double.tryParse(
+                          (value ?? '').replaceAll(',', '.'),
+                        );
+
+                        if (price == null || price < 0.01) {
+                          return 'Preço inválido.';
+                        }
+                        return null;
+                      },
+                    ),
+                    TextFormField(
+                      controller: stockController,
+                      decoration: const InputDecoration(labelText: 'Estoque'),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        final stock = int.tryParse(value ?? '');
+
+                        if (stock == null || stock < 0) {
+                          return 'Estoque inválido.';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (!formKey.currentState!.validate()) return;
+
+                  Navigator.pop(dialogContext, {
+                    'name': nameController.text.trim(),
+                    'description': descriptionController.text.trim().isEmpty
+                        ? null
+                        : descriptionController.text.trim(),
+                    'price': double.parse(
+                      priceController.text.replaceAll(',', '.'),
+                    ),
+                    'stock': int.parse(stockController.text),
+                  });
+                },
+                child: const Text('Salvar'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (data == null || !mounted) return;
+
+      await widget.productService.update(product.id, data);
+
+      if (!mounted) return;
+
+      await _loadProducts();
+
+      if (!mounted) return;
+
+      _showMessage('Anúncio atualizado com sucesso!');
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('Erro ao atualizar anúncio: $error');
+    } finally {
+      nameController.dispose();
+      descriptionController.dispose();
+      priceController.dispose();
+      stockController.dispose();
+    }
+  }
+
+  Future<void> _deleteProduct(Product product) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Excluir anúncio'),
+        content: Text('Deseja realmente excluir "${product.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Excluir'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await widget.productService.delete(product.id);
+
+      if (!mounted) return;
+
+      await _loadProducts();
+
+      if (!mounted) return;
+
+      _showMessage('Anúncio excluído com sucesso!');
+    } catch (error) {
+      if (!mounted) return;
+      _showMessage('Erro ao excluir anúncio: $error');
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _logout() async {
@@ -98,7 +265,6 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 64,
@@ -144,6 +310,20 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
                 ],
               ),
             ),
+            Column(
+              children: [
+                IconButton(
+                  tooltip: 'Editar anúncio',
+                  onPressed: () => _editProduct(product),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Excluir anúncio',
+                  onPressed: () => _deleteProduct(product),
+                  icon: const Icon(Icons.delete_outline, color: Colors.red),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -157,48 +337,42 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
 
     if (_errorMessage != null) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.error_outline, size: 48),
-              const SizedBox(height: AppSpacing.md),
-              Text(_errorMessage!, textAlign: TextAlign.center),
-              const SizedBox(height: AppSpacing.md),
-              ElevatedButton.icon(
-                onPressed: _loadProducts,
-                icon: const Icon(Icons.refresh),
-                label: const Text(AppStrings.refresh),
-              ),
-            ],
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48),
+            const SizedBox(height: AppSpacing.md),
+            Text(_errorMessage!),
+            const SizedBox(height: AppSpacing.md),
+            ElevatedButton.icon(
+              onPressed: _loadProducts,
+              icon: const Icon(Icons.refresh),
+              label: const Text(AppStrings.refresh),
+            ),
+          ],
         ),
       );
     }
 
     if (_products.isEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.inventory_2_outlined,
-                size: 48,
-                color: AppColors.primary,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              const Text(AppStrings.noProducts, textAlign: TextAlign.center),
-              const SizedBox(height: AppSpacing.md),
-              OutlinedButton.icon(
-                onPressed: _loadProducts,
-                icon: const Icon(Icons.refresh),
-                label: const Text(AppStrings.refresh),
-              ),
-            ],
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.inventory_2_outlined,
+              size: 48,
+              color: AppColors.primary,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text(AppStrings.noProducts),
+            const SizedBox(height: AppSpacing.md),
+            OutlinedButton.icon(
+              onPressed: _loadProducts,
+              icon: const Icon(Icons.refresh),
+              label: const Text(AppStrings.refresh),
+            ),
+          ],
         ),
       );
     }
@@ -253,10 +427,7 @@ class _SellerDashboardScreenState extends State<SellerDashboardScreen> {
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                 ),
-                Text(
-                  '${_products.length}',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text('${_products.length}'),
               ],
             ),
             const SizedBox(height: AppSpacing.md),

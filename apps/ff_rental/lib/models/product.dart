@@ -31,19 +31,12 @@ class Product {
 
   static int? _parseInt(dynamic value) {
     if (value == null) return null;
-
-    if (value is num) {
-      return value.toInt();
-    }
-
+    if (value is num) return value.toInt();
     return int.tryParse(value.toString());
   }
 
   static double _parseDouble(dynamic value) {
-    if (value is num) {
-      return value.toDouble();
-    }
-
+    if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
@@ -65,17 +58,15 @@ class Product {
       return value;
     }
 
-    final relativePath = value.startsWith('/') ? value.substring(1) : value;
+    var relativePath = value.startsWith('/') ? value.substring(1) : value;
 
-    final storagePath = relativePath.startsWith('storage/')
-        ? relativePath
-        : 'storage/$relativePath';
+    if (relativePath.startsWith('storage/')) {
+      relativePath = relativePath.substring('storage/'.length);
+    }
 
-    final baseUri = Uri.parse(ApiConstants.baseUrl);
+    final baseUrl = ApiConstants.baseUrl.replaceFirst(RegExp(r'/$'), '');
 
-    return baseUri
-        .replace(path: '/$storagePath', query: null, fragment: null)
-        .toString();
+    return '$baseUrl/product-images/$relativePath';
   }
 
   factory Product.fromJson(Map<String, dynamic> json) {
