@@ -7,6 +7,7 @@ import '../../screens/auth/register_screen.dart';
 import '../../screens/home/admin_dashboard_screen.dart';
 import '../../screens/home/catalog_screen.dart';
 import '../../screens/home/seller_dashboard_screen.dart';
+import '../../services/admin_dashboard_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/product_service.dart';
 import 'route_names.dart';
@@ -15,10 +16,10 @@ class AppRouter {
   static GoRouter create({
     required AuthService authService,
     required ProductService productService,
+    required AdminDashboardService adminDashboardService,
   }) {
     return GoRouter(
       initialLocation: '/login',
-
       redirect: (context, state) async {
         final user = await authService.getCurrentUser();
         final path = state.matchedLocation;
@@ -53,7 +54,6 @@ class AppRouter {
 
         return null;
       },
-
       routes: [
         GoRoute(
           path: '/login',
@@ -76,8 +76,11 @@ class AppRouter {
             return _AuthenticatedPage(
               authService: authService,
               user: state.extra is User ? state.extra as User : null,
-              builder: (user) =>
-                  AdminDashboardScreen(user: user, authService: authService),
+              builder: (user) => AdminDashboardScreen(
+                user: user,
+                authService: authService,
+                adminDashboardService: adminDashboardService,
+              ),
             );
           },
         ),

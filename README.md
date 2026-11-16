@@ -1,113 +1,227 @@
-# ES & TADS - 2026
+# FF Rental
 
-Projeto exclusivo para uso didático na disciplina de **Programação Orientada a Objetos para Web (POO-WEB)** dos cursos:
-- **Engenharia de Software (ES)**
-- **Tecnologia em Análise e Desenvolvimento de Sistemas (TADS)**.
+**Marketplace para anúncios e aluguel de contas de Free Fire.**
 
-# Setup
+## Informações do projeto
 
-## Download
+- **Aluno:** Leonardo Lemes Passos
+- **Curso:** Tecnologia em Análise e Desenvolvimento de Sistemas (TADS)
+- **Disciplina:** Programação para Dispositivos Móveis / Paradigmas de Linguagem de Programação / Programação Orientada a Objetos para Web
+- **Back-end:** Opção A — API Laravel
+- **Front-end:** Flutter / Dart
+- **Banco de dados:** MySQL
 
-Download do projeto completo
+## Sobre o projeto
 
-```sh
-git clone git@github.com:cjchamado/tads-es-2026-poo-web.git poo-web
+O FF Rental é um aplicativo desenvolvido em Flutter, integrado a uma API Laravel, com o objetivo de permitir o cadastro, a consulta e o gerenciamento de anúncios de contas de Free Fire.
+
+O sistema possui três tipos de usuários:
+
+- **Administrador:** possui acesso ao painel administrativo e aos indicadores do sistema.
+- **Vendedor:** pode publicar e gerenciar seus próprios anúncios.
+- **Comprador:** pode consultar os anúncios disponíveis no catálogo.
+
+Cada anúncio de conta deve possuir duas imagens obrigatórias: uma imagem da conta e outra do inventário, permitindo que os interessados visualizem as informações do anúncio.
+
+## Funcionalidades
+
+### Autenticação
+- Cadastro de usuários.
+- Login.
+- Controle de acesso por perfil.
+- Persistência da sessão do usuário.
+
+### Anúncios
+- Cadastro de anúncios.
+- Listagem dos próprios anúncios.
+- Consulta do catálogo.
+- Edição de anúncios.
+- Exclusão de anúncios.
+- Envio obrigatório da imagem da conta e da imagem do inventário.
+- Armazenamento das imagens no back-end.
+
+### Painéis
+- Painel do vendedor com seus anúncios.
+- Painel administrativo com indicadores de usuários, anúncios, categorias, pedidos e avaliações.
+
+## Tecnologias utilizadas
+
+### Aplicativo
+- Flutter
+- Dart
+- Dio
+- GoRouter
+- Flutter Secure Storage
+- Image Picker
+
+### Back-end
+- PHP
+- Laravel
+- Laravel Sanctum
+- MySQL
+- Docker
+
+## Arquitetura do projeto
+
+O aplicativo utiliza arquitetura em camadas, separando as responsabilidades de cada parte do sistema.
+
+```text
+apps/ff_rental/lib/
+├── main.dart
+├── app.dart
+├── core/
+│   ├── constants/
+│   ├── routes/
+│   ├── theme/
+│   └── utils/
+├── models/
+├── repositories/
+├── services/
+└── screens/
+    ├── auth/
+    └── home/
 ```
 
-## Up
+### Responsabilidades das camadas
 
-Subir os containers de serviços
+- **Models:** representam as entidades e realizam a conversão dos dados JSON.
+- **Repositories:** realizam as operações de comunicação com a API.
+- **Services:** centralizam as regras e intermediam as operações entre as telas e os repositories.
+- **Screens:** apresentam as interfaces e recebem as interações dos usuários.
+- **Core:** concentra constantes, rotas, temas e utilitários.
 
-```sh
-cd poo-web
+O fluxo de comunicação segue a seguinte estrutura:
+
+```text
+Screen
+  ↓
+Service
+  ↓
+Repository
+  ↓
+API Laravel
+  ↓
+Banco de dados MySQL
 ```
 
-**EXECUTE APENAS UM DOS COMANDOS ABAIXO**
+## Telas e rotas
 
-**Opção 1 (verbose):**
-> Execute este comando na primeira execução, este formato permite que você analise se tudo está OK.
+| Tela | Rota |
+|---|---|
+| Login | `/login` |
+| Cadastro | `/register` |
+| Painel administrativo | `/admin` |
+| Painel do vendedor | `/seller` |
+| Catálogo de anúncios | `/catalog` |
+| Cadastro de anúncio | Formulário acessado pelo painel do vendedor |
 
-```sh
-docker compose up --build
-```
+A navegação é realizada utilizando o pacote GoRouter, com rotas nomeadas.
 
-**Opção 2 (background):**
-> Para garantir que tudo está OK, utilize este formato somente depois da primeira vez que rodar os containers.
+## Execução do projeto
 
-```sh
+### Requisitos
+
+- Flutter SDK instalado.
+- Dart SDK.
+- Docker Desktop.
+- Git.
+- Navegador Google Chrome para execução Web.
+
+### 1. Iniciar o back-end
+
+Na raiz do repositório, execute:
+
+```bash
 docker compose up -d
 ```
 
-## Check
+Verifique os containers:
 
-Verificar se tudo está online (OK)
-
-```sh
-docker ps | grep poo_web
-```
-> Uma lista de containers em execução deve ser exibida após o comando.
-
-## API (Laravel)
-
-1. Acessar o container do php para execução dos comandos do laravel (artisan).
-
-```sh
-docker exec -it poo_web_php bash
+```bash
+docker ps
 ```
 
-2. Instalar as dependências
-> Apenas a primeira vez ou quando novas dependências forem adicionadas
+### 2. Executar as migrations
 
-```sh
-composer install
+```bash
+docker exec -it poo_web_php php artisan migrate
 ```
 
-3. Configurar o arquivo de variáveis de ambiente (.env)
-> As configurações básicas já estão definidas
+### 3. Configurar o armazenamento das imagens
 
-```sh
-cp .env.example .env
+```bash
+docker exec -it poo_web_php php artisan storage:link
 ```
 
-4. Gerar chave secreta da aplicação
+### 4. Executar o aplicativo Flutter
 
-```sh
-php artisan key:generate
+Acesse a pasta do aplicativo:
+
+```bash
+cd apps/ff_rental
 ```
 
-5. Inicializar migrations
+Instale as dependências:
 
-```sh
-php artisan migrate
+```bash
+flutter pub get
 ```
 
-## WEB (Quasar)
+Execute no navegador:
 
-1. Acessar o container do quasar para execução dos comandos para web.
-
-```sh
-docker exec -it poo_web_quasar bash
+```bash
+flutter run -d chrome
 ```
 
-2. Instalar as dependências
-> Apenas a primeira vez ou quando novas dependências forem adicionadas
+### 5. Endereço da API
 
-```sh
-npm install
+O aplicativo utiliza a API Laravel disponibilizada localmente em:
+
+```text
+http://localhost:8182/api
 ```
 
-3. Executar a aplicação
+A configuração da URL encontra-se em:
 
-```sh
-quasar dev
+```text
+lib/core/constants/api_constants.dart
 ```
 
-# Acesso aos recursos web:
+## Verificação de qualidade
 
-- [**phpMyAdmin** - http://localhost:8184](http://localhost:8184)
-- [**API** - http://localhost:8182](http://localhost:8182)
-- [**WEB** - http://localhost:9010](http://localhost:9010)
+Para formatar os arquivos:
 
-# Versionamento (Git / GitHub)
+```bash
+dart format .
+```
 
-Após a execução bem sucedida dos passos acima, serão passadas instruções para que cada aluno faça o apontamento correto do projeto para seu repositório individual.
+Para analisar o código:
+
+```bash
+flutter analyze
+```
+
+Para executar os testes:
+
+```bash
+flutter test
+```
+
+## Capturas de tela
+
+As capturas abaixo devem representar as telas reais do aplicativo:
+
+- Tela de login.
+- Tela de cadastro.
+- Catálogo de anúncios.
+- Painel do vendedor.
+- Formulário de publicação de anúncio.
+- Painel administrativo.
+
+As imagens podem ser organizadas em uma pasta `docs/prints/` na raiz do projeto.
+
+## Considerações finais
+
+O FF Rental foi desenvolvido como projeto acadêmico com o objetivo de aplicar os conhecimentos de desenvolvimento mobile, programação orientada a objetos, integração com APIs REST e arquitetura em camadas.
+
+O projeto utiliza Flutter no aplicativo mobile e Laravel no back-end, com persistência dos dados em banco de dados MySQL.

@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/constants/app_strings.dart';
-import '../../core/network/api_client.dart';
 import '../../core/routes/route_names.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../models/admin_dashboard.dart';
 import '../../models/user.dart';
+import '../../services/admin_dashboard_service.dart';
 import '../../services/auth_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -14,35 +15,26 @@ class AdminDashboardScreen extends StatefulWidget {
     super.key,
     required this.user,
     required this.authService,
+    required this.adminDashboardService,
   });
 
   final User user;
   final AuthService authService;
+  final AdminDashboardService adminDashboardService;
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  late final ApiClient _apiClient;
-
-  Map<String, dynamic> _totals = {};
+  AdminDashboard? _dashboard;
   bool _isLoading = true;
   String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _apiClient = ApiClient();
     _loadDashboard();
-  }
-
-  int _number(String key) {
-    final value = _totals[key];
-
-    if (value is num) return value.toInt();
-
-    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   Future<void> _loadDashboard() async {
@@ -52,25 +44,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     });
 
     try {
-      final response = await _apiClient.dio.get('/admin/dashboard');
-
-      final data = response.data;
-
-      if (data is! Map || data['totals'] is! Map) {
-        throw Exception('Resposta inválida do painel administrativo.');
-      }
+      final dashboard = await widget.adminDashboardService.getDashboard();
 
       if (!mounted) return;
 
       setState(() {
-        _totals = Map<String, dynamic>.from(data['totals'] as Map);
+        _dashboard = dashboard;
         _isLoading = false;
       });
     } catch (error) {
       if (!mounted) return;
 
       setState(() {
-        _errorMessage = 'Não foi possível carregar os dados administrativos.';
+        _errorMessage = error.toString().replaceFirst('Exception: ', '');
         _isLoading = false;
       });
     }
@@ -88,7 +74,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required String title,
     required int value,
     required IconData icon,
-    String? description,
   }) {
     return SizedBox(
       width: 280,
@@ -98,8 +83,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Row(
             children: [
               Container(
-                width: 50,
-                height: 50,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
@@ -112,17 +97,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: Theme.of(context).textTheme.bodyMedium),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSpacing.xs),
                     Text(
                       '$value',
                       style: Theme.of(context).textTheme.headlineMedium
                           ?.copyWith(fontWeight: FontWeight.bold),
                     ),
-                    if (description != null)
-                      Text(
-                        description,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
                   ],
                 ),
               ),
@@ -133,7 +113,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _buildDashboard() {
+  Widget _buildContent() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -160,45 +140,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
     }
 
+    final dashboard = _dashboard;
+
+    if (dashboard == null) {
+      return const Center(child: Text('Nenhum dado disponível.'));
+    }
+
     return Wrap(
       spacing: AppSpacing.md,
       runSpacing: AppSpacing.md,
       children: [
         _summaryCard(
           title: 'Anúncios',
-          value: _number('products'),
+          value: dashboard.products,
           icon: Icons.sports_esports,
-          description: 'Total cadastrado',
         ),
         _summaryCard(
           title: 'Anúncios ativos',
-          value: _number('active_products'),
+          value: dashboard.activeProducts,
           icon: Icons.check_circle_outline,
-          description: 'Disponíveis no catálogo',
         ),
         _summaryCard(
           title: 'Usuários',
-          value: _number('users'),
+          value: dashboard.users,
           icon: Icons.people_outline,
-          description: 'Contas cadastradas',
         ),
         _summaryCard(
           title: 'Categorias',
-          value: _number('categories'),
+          value: dashboard.categories,
           icon: Icons.category_outlined,
-          description: 'Categorias registradas',
         ),
         _summaryCard(
           title: 'Pedidos',
-          value: _number('orders'),
+          value: dashboard.orders,
           icon: Icons.shopping_bag_outlined,
-          description: 'Pedidos registrados',
         ),
         _summaryCard(
           title: 'Avaliações',
-          value: _number('reviews'),
+          value: dashboard.reviews,
           icon: Icons.star_outline,
-          description: 'Avaliações registradas',
         ),
       ],
     );
@@ -254,16 +234,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: AppSpacing.md),
-                      _buildDashboard(),
-                      const SizedBox(height: AppSpacing.xl),
-                      Text(
-                        AppStrings.adminModulesTitle,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: AppSpacing.sm),
-                      const Text(
-                        'Os dados acima são carregados diretamente da API administrativa.',
-                      ),
+                      _buildContent(),
                     ],
                   ),
                 ),

@@ -6,9 +6,11 @@ import 'core/constants/app_strings.dart';
 import 'core/network/api_client.dart';
 import 'core/routes/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'repositories/admin_dashboard_repository.dart';
 import 'repositories/auth_repository.dart';
 import 'repositories/product_repository.dart';
 import 'repositories/session_repository.dart';
+import 'services/admin_dashboard_service.dart';
 import 'services/auth_service.dart';
 import 'services/product_service.dart';
 
@@ -22,6 +24,7 @@ class FFRentalApp extends StatefulWidget {
 class _FFRentalAppState extends State<FFRentalApp> {
   late final AuthService _authService;
   late final ProductService _productService;
+  late final AdminDashboardService _adminDashboardService;
   late final GoRouter _router;
 
   @override
@@ -39,9 +42,14 @@ class _FFRentalAppState extends State<FFRentalApp> {
 
     _productService = ProductService(ProductRepository(apiClient));
 
+    _adminDashboardService = AdminDashboardService(
+      AdminDashboardRepository(apiClient),
+    );
+
     _router = AppRouter.create(
       authService: _authService,
       productService: _productService,
+      adminDashboardService: _adminDashboardService,
     );
   }
 
